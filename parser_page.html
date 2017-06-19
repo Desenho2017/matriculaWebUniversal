@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<link rel="stylesheet" href="styles.css">
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+		<script src="parser_source.js"></script>
+		<script src="progressBarHandler.js"></script>
+		<script src="dataChecker.js"></script>
+	</head>
+	<body>
+		<ol type="1">
+		  <li>Click in "Read MW FGA"</li>
+		  <li>Click in "Gambiarra the data" (Needed)</li>
+		  <li>Choose "Show me the data" or "Show JSON"</li>
+		</ol>
+
+		<button onclick="parserStart();">Read MW FGA</button>
+		<button onclick="print_data();">Show me the data (Console)</button>
+		<button onclick="gambiarra_save_data();">Gambiarra the data</button>
+		<button onclick="dataToJsonText();">Show JSON</button>
+		<br></br>
+		<textarea id="json_text" rows="20" cols="50"></textarea>
+		<br></br>
+		<h4 id="status_info">Click in "Read MW FGA" to start!</h3>
+		<div id="bar_size"><div id="progress_bar"></div></div></div>
+	</body>
+</html>

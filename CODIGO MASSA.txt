@@ -1,0 +1,200 @@
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+
+
+<script>
+
+// Só os nomes das matérias: /<a title=(.*?)href=(.*?)<\/td><td>/ig
+// Otimizado nos 4 grupos: <a title='(.*?)' href=(.*?)>.*?<b>(.*?)<\/b><\/td><td>
+// Ultimo usado: /<a title='(.*?)' href=(.*?)>(.*?)<b>(.*?)<\/b><\/td><td>/ig
+var url_mw = 'https://matriculaweb.unb.br/graduacao/oferta_dis.aspx?cod=650';
+var html_text = null;
+var other_data = [];
+var test_data = [];
+var oferta_data = [];
+
+function interate_regex(regex_text, text){
+	var match, result = [];
+	
+	while (match = regex_text.exec(text)){
+		result.push(match[1]);
+	};
+	
+	return result;
+}
+
+function regex_days(data){
+	var match, result = [], locals = [];
+	var counter = 0;
+	var regex_days = /(segunda|terça|quarta|quinta|sexta|sábado|domingo)     ([0-9]{2}:[0-9]{2})    ([0-9]{2}:[0-9]{2})/ig;
+	var regex_places = /([a-z0-9\-]*[^ ])/ig;
+	//console.log("In days");
+	//console.log(data);
+	
+	var clean_match = data.replace(regex_days, "");
+	//console.log("Clean match: " + clean_match);
+	locals = interate_regex(regex_places, clean_match);
+	//console.log("Locals: ");
+	//console.log(locals);
+	
+	while (match = regex_days.exec(data)){
+		
+		
+		//console.log("Meu match favorito");
+		//console.log(match);
+		var day = {day: match[1], start_time: match[2], end_time: match[3], local: locals[counter]};
+		
+		counter++;
+		result.push(day);
+	};
+	
+	return result;
+}
+
+function regex_class(regex_text, text){
+	var match, result = [];
+	
+	while (match = regex_text.exec(text)){
+		//console.log(match);
+		var found_days = regex_days(match[3]);
+		var class_data = {class_name: match[1], professor: match[4], days: found_days};
+		result.push(class_data);
+	};
+	
+	return result;
+}
+
+function interate_array_regex(regex_text, text_array){
+	var match, array_size = text_array.length;
+	var result_array = []
+	
+	//console.log("In interate function");
+	//console.log(regex_text);
+	//console.log(text_array);
+	
+	for(var counter = 0; counter < array_size; counter++){
+		var result = [];
+		
+		while (match = regex_text.exec(text_array[counter])){
+			//console.log("Logging matches");
+			result.push(match[1]);
+			//console.log(match);
+		};
+		
+		result_array.push(result);
+	}
+	
+	return result_array;
+}
+
+function get_places(text){
+	var regex_days = /(segunda|terça|quarta|quinta|sexta|sábado|domingo)     ([0-9]{2}:[0-9]{2})    ([0-9]{2}:[0-9]{2})/ig;
+	var regex_places = /([a-z0-9\-]*[^ ])/ig;
+	
+	var only_places = text.replace(regex_days, "");
+	
+	return interate_regex(regex_places, only_places);
+}
+
+function get_class_data(url){
+	var classes = [];
+	var goto_url = 'https://matriculaweb.unb.br/graduacao/oferta_dados' + url;
+	console.log("Acessando: " + goto_url);
+	
+	$.get(goto_url,
+		function (response) {
+			var regex_classes = /TurmaVagasTurnoHorário\/LocalProfessorObs ([a-z]{1,2})(.*?)DOMSEG TER QUA QUI SEX SÁB (.*?) ([a-z ]*)   turma:/ig;
+			
+			var clean_html = clean_mw_shit_html(response)
+			classes = regex_class(regex_classes, clean_html);
+			console.log("Vou retornar isso");
+			console.log(classes);
+			
+			test_data.push(classes);
+			
+			$("#viewer").html(response);
+		});
+	
+	console.log("Fora do escopo:");
+	console.log(classes);
+	return classes;	
+}
+
+function gambiarra_save_data(){
+	var oferta_size = oferta_data.length;
+	
+	for(var counter = 0; counter < oferta_size; counter++){
+		oferta_data[counter].class_data = test_data[counter];
+	}
+	
+	console.log("Gambiarra feita!!!");
+}
+
+function clean_mw_shit_html(shit_html)
+{
+   var tmp = document.createElement("DIV");
+   tmp.innerHTML = shit_html;
+   return (tmp.textContent||tmp.innerText).replace(/ +(?= )/g,'');
+}
+
+function organize_class(name, code, url){
+	var new_class = {};
+	var data = [];
+	
+	data = get_class_data(url);
+	
+	new_class = {class_name: name, class_code: code, class_data: data, class_url: url};
+	
+	return new_class;
+}
+
+$(document).ready(function(){
+    $("#get_data").click(function(){
+        $.ajaxPrefilter( function (options) {
+			if (options.crossDomain && jQuery.support.cors) {
+				var http = (window.location.protocol === 'http:' ? 'http:' : 'https:');
+			options.url = http + '//cors-anywhere.herokuapp.com/' + options.url;
+			//options.url = "http://cors.corsproxy.io/url=" + options.url;
+			}
+		});
+		
+		$.get(
+			url_mw,
+			function (response) {
+				//console.log(response);
+				html_text = response;
+				
+				var regex_in = /<a href=(.*?)<\/td><td>/ig;
+				var result = interate_regex(regex_in, html_text);
+				//console.log(result);
+				
+				var regex_names = />(.*?)<\/a>/ig;
+				var re_names = interate_regex(regex_names, result);
+				//console.log(re_names);
+				
+				var regex_ref = /oferta_dados(.*?)>(.*?)<\/a>/ig;
+				var re_ref = interate_regex(regex_ref, result);
+				//console.log(re_ref);
+				
+				var regex_code = /cod=([0-9]*)/ig;
+				var re_code = interate_regex(regex_code, result);
+				//console.log(re_code);
+				
+				for(var count=0; count < 5; count++){
+					oferta_data.push(organize_class(re_names[count], re_code[count], re_ref[count]));
+				}
+				
+			$("#viewer").html(response);
+		});
+		
+    });
+});
+
+function print_data(){
+	console.log("Aqui está o dado que você pediu:");
+	console.log(oferta_data);
+}
+</script>
+
+<button id="get_data">Read shit MW</button>
+<button onclick="print_data();">Show me the data</button>
+<button onclick="gambiarra_save_data();">Gambiarra the data</button>
